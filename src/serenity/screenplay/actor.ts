@@ -1,4 +1,4 @@
-import { Activity } from './activities';
+import { Attemptable, isPerformable } from './activities';
 import { Question } from './question';
 
 export interface Ability {} // tslint:disable-line:no-empty-interface
@@ -8,7 +8,7 @@ export interface AbilityConstructor<A extends Ability> {
 }
 
 export interface PerformsTasks {
-    attemptsTo(...tasks: Activity[]): Promise<void>;
+    attemptsTo(...tasks: Attemptable[]): Promise<void>;
 }
 
 export interface UsesAbilities {
@@ -55,9 +55,9 @@ export class Actor implements PerformsTasks, UsesAbilities, AnswersQuestions {
         return this.abilities[doSomething.name] as T;
     }
 
-    attemptsTo(...tasks: Activity[]): Promise<void> {
-        return tasks.reduce((previous: Promise<void>, current: Activity) => {
-            return previous.then(() => current.performAs(this));
+    attemptsTo(...tasks: Attemptable[]): Promise<void> {
+        return tasks.reduce((previous: Promise<void>, current: Attemptable) => {
+            return previous.then(() => this.executeAttemptable(current));
         }, Promise.resolve(null));
     }
 
@@ -73,5 +73,12 @@ export class Actor implements PerformsTasks, UsesAbilities, AnswersQuestions {
 
     private can<T extends Ability>(doSomething: AbilityConstructor<T>): boolean {
         return !! this.abilities[doSomething.name];
+    }
+
+    private executeAttemptable(attemptable: Attemptable): PromiseLike<void> {
+        if (isPerformable(attemptable)) {
+            return attemptable.performAs(this);
+        }
+        return attemptable(this);
     }
 }
