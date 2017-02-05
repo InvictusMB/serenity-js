@@ -1,4 +1,4 @@
-import { Performable } from './performables';
+import { Attemptable, isPerformable } from './performables';
 import { Question } from './question';
 
 export interface Ability { }
@@ -6,7 +6,7 @@ export interface Ability { }
 export type CustomAbility<T extends Ability> = { new (...args): T };
 
 export interface PerformsTasks {
-    attemptsTo(...tasks: Performable[]): Promise<void>;
+    attemptsTo(...tasks: Attemptable[]): Promise<void>;
 }
 
 export interface UsesAbilities {
@@ -53,9 +53,9 @@ export class Actor implements PerformsTasks, UsesAbilities, AnswersQuestions {
         return <T> this.abilities[this.nameOf(doSomething)];
     }
 
-    attemptsTo(...tasks: Performable[]): Promise<void> {
-        return tasks.reduce((previous: Promise<void>, current: Performable) => {
-            return previous.then(() => current.performAs(this));
+    attemptsTo(...tasks: Attemptable[]): Promise<void> {
+        return tasks.reduce((previous: Promise<void>, current: Attemptable) => {
+            return previous.then(() => this.executeAttemptable(current));
         }, Promise.resolve(null));
     }
 
@@ -75,5 +75,12 @@ export class Actor implements PerformsTasks, UsesAbilities, AnswersQuestions {
 
     private nameOf<T extends Ability>(ability: CustomAbility<T>): string {
         return ability.name;
+    }
+
+    private executeAttemptable(attemptable: Attemptable): PromiseLike<void> {
+        if (isPerformable(attemptable)) {
+            return attemptable.performAs(this);
+        }
+        return attemptable(this);
     }
 }
